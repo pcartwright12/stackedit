@@ -22,6 +22,28 @@ export const dingDongRawAbc = [
   '[V: P4] B,, D, E,/ E,/ C,/ C,/ | F,3 D, | E, G, F, F, | B,,2 B,,2 | B,, D, E,/ E,/ C,/ C,/ | F,3 D, | E, G, F, F, | B,,2 B,,2[|:z (A, B, D, | C, D, E,/D,/ C, |z F, G, B,, | A,, B,, C,/B,,/ A,,) |z (D, E, G, | F,) G, A, B, | E, G, F, F | B,,2 B,,2 :|]|] Z',
 ].join('\n');
 
+export const abcMarkdownTortureTest = [
+  'X:999',
+  'T:ABC Markdown Torture Test',
+  'C:Parser Goblin',
+  'M:6/8',
+  'L:1/8',
+  'Q:3/8=96',
+  'K:Dmix',
+  'V:melody name="Melody" clef=treble',
+  'V:harmony name="Harmony" clef=treble',
+  'V:bass name="Bass" clef=bass',
+  '%%staves (melody harmony) bass',
+  '',
+  '[V:melody] "D" {g}A2F (3GFE | ^C>D E2F | (A-B) c>d e2 | [FA]2 z "A7"g2 f |',
+  'w:Ly-ric test with~joined words and mel-is-ma_',
+  '',
+  '[V:harmony] z2 A, [DFA]2 | F2 E D2 C | B,2 C D2 E | F3 z3 |',
+  '',
+  '[V:bass] D,,3 A,,3 | D,2 F, A,2 z | G,,3 D,,3 | A,,3 D,,3 |]',
+].join('\n');
+
 export default {
+  abcMarkdownTortureTest,
   dingDongRawAbc,
 };

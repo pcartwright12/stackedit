@@ -1,12 +1,13 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
-import SynthController from 'abcjs/src/synth/synth-controller';
-import supportsAudio from 'abcjs/src/synth/supports-audio';
+import abcjs from 'abcjs/dist/abcjs-basic';
 import {
   applyPostponedLyricsShim,
   collectStrictDiagnostics,
   normalizeDiagnostic,
   splitTunebook,
 } from '../utils';
+
+const { renderAbc } = abcjs;
+const { SynthController, supportsAudio } = abcjs.synth;
 
 function renderPlaybackMessage(targetElement, message, severity = 'warning') {
   const messageElt = document.createElement('div');

@@ -1,13 +1,24 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
+import abcjs from 'abcjs/dist/abcjs-basic';
 import abcNotationSvc from '../../../../src/services/abcNotation';
 import fixtures from '../../fixtures/abcNotationFeatureFixtures';
-import { dingDongRawAbc } from '../../fixtures/abcRawTunebookFixtures';
+import {
+  abcMarkdownTortureTest,
+  dingDongRawAbc,
+} from '../../fixtures/abcRawTunebookFixtures';
 
-jest.mock('abcjs/src/api/abc_tunebook_svg', () => jest.fn());
+jest.mock('abcjs/dist/abcjs-basic', () => ({
+  renderAbc: jest.fn(),
+  synth: {
+    supportsAudio: jest.fn(() => true),
+    SynthController: jest.fn(),
+  },
+}));
 jest.mock('!raw-loader!abc2svg/abc2svg-1.js', () => (
   // eslint-disable-next-line global-require
   require('fs').readFileSync(require.resolve('abc2svg/abc2svg-1.js'), 'utf8')
 ));
+
+const { renderAbc } = abcjs;
 
 describe('abcNotation feature fixtures', () => {
   beforeEach(() => {
@@ -67,6 +78,24 @@ describe('abcNotation feature fixtures', () => {
     abcNotationSvc.renderTune(renderContext.tunes[0], targetElement, renderContext);
 
     expect(renderAbc).toHaveBeenCalled();
+    expect(targetElement.querySelector('svg')).toBeTruthy();
+  });
+
+  it('should render the ABC Markdown torture test through abcjs', () => {
+    const targetElement = document.createElement('div');
+    const renderContext = abcNotationSvc.parseTunebook(abcMarkdownTortureTest, {
+      renderer: 'abcjs',
+      strict: true,
+    });
+
+    expect(renderContext.tunes).toHaveLength(1);
+    expect(renderContext.tunes[0].title).toBe('ABC Markdown Torture Test');
+
+    abcNotationSvc.renderTune(renderContext.tunes[0], targetElement, renderContext);
+
+    expect(renderAbc).toHaveBeenCalled();
+    expect(renderAbc.mock.calls[0][1]).toContain('K:Dmix');
+    expect(renderAbc.mock.calls[0][1]).toContain('[V:melody]');
     expect(targetElement.querySelector('svg')).toBeTruthy();
   });
 });

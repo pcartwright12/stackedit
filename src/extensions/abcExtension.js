@@ -3,6 +3,7 @@ import abcNotationSvc from '../services/abcNotation';
 import extensionSvc from '../services/extensionSvc';
 import markdownFenceLanguageSvc from '../services/markdownFenceLanguageSvc';
 import {
+  collectRawAbcBlock,
   isLikelyAbcTunebook,
   sanitizeRawAbcSource,
 } from '../services/abcNotation/utils';
@@ -149,7 +150,7 @@ function renderLegacyBlock(elt, options) {
 }
 
 function removeDanglingFenceSibling(elt) {
-  const siblingElt = elt.nextElementSibling;
+  const siblingElt = elt && elt.nextElementSibling;
   if (
     siblingElt &&
     siblingElt.tagName === 'PRE' &&
@@ -159,11 +160,20 @@ function removeDanglingFenceSibling(elt) {
   }
 }
 
-function renderRawBlock(elt, options) {
-  const content = sanitizeRawAbcSource(elt.textContent);
+function renderRawBlock(entries, options) {
+  const content = sanitizeRawAbcSource(entries
+    .map(entry => entry.sourceElt.textContent)
+    .join('\n\n'));
   const blockElt = createElement('div', 'abc-notation-block');
-  removeDanglingFenceSibling(elt);
-  elt.parentNode.replaceChild(blockElt, elt);
+  const firstEntry = entries[0];
+  const lastEntry = entries[entries.length - 1];
+  removeDanglingFenceSibling(lastEntry.containerElt);
+  firstEntry.containerElt.parentNode.replaceChild(blockElt, firstEntry.containerElt);
+  entries.slice(1).forEach((entry) => {
+    if (entry.containerElt.parentNode) {
+      entry.containerElt.parentNode.removeChild(entry.containerElt);
+    }
+  });
   renderBlock(blockElt, content, options);
 }
 
@@ -178,6 +188,88 @@ function isInsideAbcBlock(elt) {
   return false;
 }
 
+function getRawAbcEntry(elt) {
+  if (!elt || elt.tagName !== 'P') {
+    return null;
+  }
+  const parentElt = elt.parentNode;
+  if (
+    parentElt &&
+    parentElt.classList &&
+    parentElt.classList.contains('cl-preview-section')
+  ) {
+    return {
+      containerElt: parentElt,
+      sourceElt: elt,
+    };
+  }
+  return {
+    containerElt: elt,
+    sourceElt: elt,
+  };
+}
+
+function getNextRawAbcEntry(entry) {
+  const nextContainerElt = entry.containerElt.nextElementSibling;
+  if (
+    nextContainerElt &&
+    nextContainerElt.classList &&
+    nextContainerElt.classList.contains('cl-preview-section')
+  ) {
+    return getRawAbcEntry(nextContainerElt.querySelector('p'));
+  }
+  return getRawAbcEntry(nextContainerElt);
+}
+
+function collectRawAbcEntries(startElt) {
+  const entries = [];
+  let matchedEntries = null;
+  let currentEntry = getRawAbcEntry(startElt);
+  while (
+    currentEntry &&
+    !isInsideAbcBlock(currentEntry.containerElt)
+  ) {
+    entries.push(currentEntry);
+    if (isLikelyAbcTunebook(entries
+      .map(entry => entry.sourceElt.textContent)
+      .join('\n\n'))) {
+      matchedEntries = entries.slice();
+    }
+    currentEntry = getNextRawAbcEntry(currentEntry);
+  }
+  return matchedEntries;
+}
+
+function rawAbcBlockRule(state, startLine, endLine, silent) {
+  const firstLineStart = state.bMarks[startLine] + state.tShift[startLine];
+  const firstLineEnd = state.eMarks[startLine];
+  const firstLine = state.src.slice(firstLineStart, firstLineEnd);
+  if (!/^X:\s*\S/.test(firstLine)) {
+    return false;
+  }
+
+  const source = state.getLines(startLine, endLine, 0, false);
+  const block = collectRawAbcBlock(source);
+  if (!block) {
+    return false;
+  }
+  if (silent) {
+    return true;
+  }
+
+  const token = state.push('fence', 'code', 0);
+  const sourceLines = source.split('\n');
+  const trailingFenceLines = /^(?:```|~~~)\s*$/.test(sourceLines[block.nextLine] || '')
+    ? 1
+    : 0;
+  token.info = 'abc';
+  token.content = block.source;
+  token.map = [startLine, startLine + block.nextLine + trailingFenceLines];
+  token.markup = '';
+  state.line = startLine + block.nextLine + trailingFenceLines;
+  return true;
+}
+
 extensionSvc.onGetOptions((options, properties) => {
   options.abc = typeof properties.extensions.abc === 'object'
     ? properties.extensions.abc
@@ -185,6 +277,11 @@ extensionSvc.onGetOptions((options, properties) => {
 });
 
 extensionSvc.onInitConverter(5, (markdown, options) => {
+  if (options.abc && options.abc.enabled) {
+    markdown.block.ruler.before('paragraph', 'abc_raw_block', rawAbcBlockRule, {
+      alt: ['paragraph', 'reference', 'blockquote'],
+    });
+  }
   const defaultFence = markdown.renderer.rules.fence ||
     ((tokens, idx, opts, env, self) => self.renderToken(tokens, idx, opts));
   markdown.renderer.rules.fence = (tokens, idx, opts, env, self) => {
@@ -221,11 +318,12 @@ extensionSvc.onSectionPreview((elt, options) => {
     });
   elt.querySelectorAll('p')
     .cl_each((paragraphElt) => {
-      if (
-        !isInsideAbcBlock(paragraphElt) &&
-        isLikelyAbcTunebook(paragraphElt.textContent)
-      ) {
-        renderRawBlock(paragraphElt, options.abc);
+      if (!paragraphElt.parentNode) {
+        return;
+      }
+      const entries = collectRawAbcEntries(paragraphElt);
+      if (entries) {
+        renderRawBlock(entries, options.abc);
       }
     });
 });

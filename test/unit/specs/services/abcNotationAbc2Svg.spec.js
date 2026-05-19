@@ -1,6 +1,3 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
-
-jest.mock('abcjs/src/api/abc_tunebook_svg', () => jest.fn());
 jest.mock('!raw-loader!abc2svg/abc2svg-1.js', () => (
   // eslint-disable-next-line global-require
   require('fs').readFileSync(require.resolve('abc2svg/abc2svg-1.js'), 'utf8')
@@ -9,10 +6,6 @@ jest.mock('!raw-loader!abc2svg/abc2svg-1.js', () => (
 const abcNotationSvc = require('../../../../src/services/abcNotation').default;
 
 describe('abcNotation abc2svg adapter', () => {
-  beforeEach(() => {
-    renderAbc.mockReset();
-  });
-
   it('should select abc2svg when configured and available', () => {
     const renderContext = abcNotationSvc.parseTunebook('X:1\nT:abc2svg\nK:C\nCDEF|', {
       renderer: 'abc2svg',

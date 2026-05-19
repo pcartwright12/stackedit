@@ -4,7 +4,6 @@ const lyricLinePattern = /^w:/;
 const bodyFieldPattern = /^[A-Za-z]:/;
 const requiredHeaderFields = ['X', 'T', 'K'];
 const danglingFencePattern = /(?:^|\n)(```|~~~)\s*$/;
-const notePattern = /(?:^|\s)(?:\[[^\]]+\]\s*)?[_=^]*[A-Ga-g][,']*\d*(?:\/\d*)?(?=\s|[|:\]])/;
 
 export function normalizeSource(source = '') {
   return `${source || ''}`.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '');
@@ -149,7 +148,7 @@ function isMusicLine(line) {
 function isPlausibleMusicLine(line) {
   const trimmedLine = line.trim();
   return isMusicLine(trimmedLine) &&
-    (/[|:]/.test(trimmedLine) || notePattern.test(trimmedLine));
+    (/[|:]/.test(trimmedLine) || /^\[V:[^\]]+\]/.test(trimmedLine));
 }
 
 function hasRequiredRawAbcShape(tune) {
@@ -162,14 +161,72 @@ function hasRequiredRawAbcShape(tune) {
   if (keyIndex < 0) {
     return false;
   }
-  const firstMusicIndex = lines.findIndex(isPlausibleMusicLine);
-  return firstMusicIndex > keyIndex;
+  for (let index = keyIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+    if (line && !directivePattern.test(line) && !bodyFieldPattern.test(line)) {
+      return isPlausibleMusicLine(line);
+    }
+  }
+  return false;
 }
 
 export function sanitizeRawAbcSource(source = '') {
   return normalizeSource(source)
     .replace(danglingFencePattern, '')
     .replace(/\s+$/g, '');
+}
+
+export function collectRawAbcBlock(source = '', startLine = 0) {
+  const lines = normalizeSource(source).split('\n');
+  const firstLine = lines[startLine];
+  if (firstLine === undefined || !/^X:\s*\S/.test(firstLine)) {
+    return null;
+  }
+
+  let hasKey = false;
+  let hasMusic = false;
+  let lastContentLine = -1;
+  for (let index = startLine; index < lines.length; index += 1) {
+    const line = lines[index];
+    const trimmedLine = line.trim();
+
+    if (!trimmedLine) {
+      // Blank lines can separate ABC paragraphs inside the same tunebook.
+    } else if (/^X:\s*\S/.test(line) && index > startLine) {
+      if (!hasMusic) {
+        return null;
+      }
+      hasKey = false;
+      hasMusic = false;
+      lastContentLine = index;
+    } else if (directivePattern.test(trimmedLine) || /^%/.test(trimmedLine)) {
+      lastContentLine = index;
+    } else if (bodyFieldPattern.test(trimmedLine)) {
+      if (/^K:\s*\S/.test(trimmedLine)) {
+        hasKey = true;
+      }
+      lastContentLine = index;
+    } else if (isPlausibleMusicLine(trimmedLine)) {
+      if (!hasKey) {
+        return null;
+      }
+      hasMusic = true;
+      lastContentLine = index;
+    } else if (hasMusic) {
+      break;
+    } else {
+      return null;
+    }
+  }
+
+  if (!hasMusic || lastContentLine < startLine) {
+    return null;
+  }
+  const nextLine = lastContentLine + 1;
+  return {
+    source: lines.slice(startLine, nextLine).join('\n'),
+    nextLine,
+  };
 }
 
 export function isLikelyAbcTunebook(source = '') {

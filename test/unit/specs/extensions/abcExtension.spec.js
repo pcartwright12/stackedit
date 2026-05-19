@@ -1,6 +1,9 @@
 import MarkdownIt from 'markdown-it';
 import '../../../../src/libs/clunderscore';
-import { dingDongRawAbc } from '../../fixtures/abcRawTunebookFixtures';
+import {
+  abcMarkdownTortureTest,
+  dingDongRawAbc,
+} from '../../fixtures/abcRawTunebookFixtures';
 
 function createAbcNotationSvcMock(overrides = {}) {
   const tunes = overrides.tunes || [{
@@ -241,6 +244,103 @@ describe('abcExtension', () => {
     expect(abcNotationSvcMock.renderTune).toHaveBeenCalled();
     expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
       .toContain('T: Ding Dong! Merrily On High');
+  });
+
+  it('should render fenced ABC torture fixtures in preview', () => {
+    const abcNotationSvcMock = createAbcNotationSvcMock();
+    const extensionSvc = loadExtension(abcNotationSvcMock);
+    const html = renderMarkdownFence(extensionSvc, `\`\`\`abc\n${abcMarkdownTortureTest}\n\`\`\``);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    extensionSvc.sectionPreview(container, { abc: { enabled: true } });
+
+    expect(container.querySelector('.abc-notation-block')).toBeTruthy();
+    expect(container.querySelector('.abc-notation-output')).toBeTruthy();
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('[V:melody]');
+  });
+
+  it('should auto-render raw ABC torture fixtures across paragraph breaks', () => {
+    const abcNotationSvcMock = createAbcNotationSvcMock();
+    const extensionSvc = loadExtension(abcNotationSvcMock);
+    const html = renderMarkdownFence(extensionSvc, abcMarkdownTortureTest);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    extensionSvc.sectionPreview(container, { abc: { enabled: true } });
+
+    expect(container.querySelectorAll('.abc-notation-block')).toHaveLength(1);
+    expect(container.querySelector('.abc-notation-output')).toBeTruthy();
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('[V:bass]');
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('V:melody name="Melody" clef=treble');
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('[V:melody] "D" {g}A2F');
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('[V:bass] D,,3 A,,3');
+  });
+
+  it('should auto-render raw ABC torture fixtures across preview sections', () => {
+    const abcNotationSvcMock = createAbcNotationSvcMock();
+    const extensionSvc = loadExtension(abcNotationSvcMock);
+    const html = renderMarkdownFence(extensionSvc, abcMarkdownTortureTest);
+    const sectionedHtml = html
+      .replace(/<p>/g, '<div class="cl-preview-section"><p>')
+      .replace(/<\/p>/g, '</p></div>');
+    const container = document.createElement('div');
+    container.innerHTML = sectionedHtml;
+
+    extensionSvc.sectionPreview(container, { abc: { enabled: true } });
+
+    expect(container.querySelectorAll('.abc-notation-block')).toHaveLength(1);
+    expect(container.querySelectorAll('.cl-preview-section')).toHaveLength(0);
+    expect(abcNotationSvcMock.parseTunebook.mock.calls[0][0])
+      .toContain('[V:bass]');
+  });
+
+  it('should not merge prose-interrupted raw ABC torture fixtures', () => {
+    const abcNotationSvcMock = createAbcNotationSvcMock();
+    const extensionSvc = loadExtension(abcNotationSvcMock);
+    const html = renderMarkdownFence(extensionSvc, abcMarkdownTortureTest.replace(
+      '\n\n[V:melody]',
+      '\n\nThis prose explains the tune before the notes.\n\n[V:melody]',
+    ));
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    extensionSvc.sectionPreview(container, { abc: { enabled: true } });
+
+    expect(container.querySelector('.abc-notation-block')).toBeFalsy();
+    expect(abcNotationSvcMock.parseTunebook).not.toHaveBeenCalled();
+  });
+
+  it('should preserve raw ABC torture source after hard render failures', () => {
+    const abcNotationSvcMock = createAbcNotationSvcMock({
+      tunes: [{
+        abc: abcMarkdownTortureTest,
+        pure: abcMarkdownTortureTest,
+        index: 0,
+        startLine: 1,
+        id: '999',
+        title: 'ABC Markdown Torture Test',
+      }],
+    });
+    abcNotationSvcMock.renderTune.mockImplementation(() => {
+      throw new Error('Renderer failed');
+    });
+    const extensionSvc = loadExtension(abcNotationSvcMock);
+    const html = renderMarkdownFence(extensionSvc, abcMarkdownTortureTest);
+    const container = document.createElement('div');
+    container.innerHTML = html;
+
+    extensionSvc.sectionPreview(container, { abc: { enabled: true } });
+
+    expect(container.querySelector('.abc-notation-source-fallback').textContent)
+      .toContain('ABC Markdown Torture Test');
+    expect(container.querySelector('.abc-notation-diagnostic--error').textContent)
+      .toContain('Renderer failed');
   });
 
   it('should remove dangling closing fences from auto-rendered raw ABC', () => {

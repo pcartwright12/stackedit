@@ -1,12 +1,16 @@
 import {
   applyPostponedLyricsShim,
+  collectRawAbcBlock,
   collectStrictDiagnostics,
   isLikelyAbcTunebook,
   normalizeRendererOptions,
   sanitizeRawAbcSource,
   splitTunebook,
 } from '../../../../src/services/abcNotation/utils';
-import { dingDongRawAbc } from '../../fixtures/abcRawTunebookFixtures';
+import {
+  abcMarkdownTortureTest,
+  dingDongRawAbc,
+} from '../../fixtures/abcRawTunebookFixtures';
 
 describe('abcNotation utils', () => {
   it('should split multi-tune ABC blocks', () => {
@@ -80,6 +84,31 @@ describe('abcNotation utils', () => {
 
   it('should detect raw multi-voice ABC tunebooks', () => {
     expect(isLikelyAbcTunebook(dingDongRawAbc)).toBe(true);
+  });
+
+  it('should detect raw ABC that starts music lines with named voices', () => {
+    expect(isLikelyAbcTunebook(abcMarkdownTortureTest)).toBe(true);
+    expect(splitTunebook(abcMarkdownTortureTest)[0].title)
+      .toBe('ABC Markdown Torture Test');
+  });
+
+  it('should collect raw ABC without markdown mutations', () => {
+    const block = collectRawAbcBlock(`${abcMarkdownTortureTest}\n\nA following paragraph.`);
+
+    expect(block.source).toContain('C:Parser Goblin');
+    expect(block.source).toContain('V:melody name="Melody" clef=treble');
+    expect(block.source).toContain('%%staves (melody harmony) bass');
+    expect(block.source).toContain('[V:melody] "D" {g}A2F');
+    expect(block.source).toContain('w:Ly-ric test with~joined words and mel-is-ma_');
+    expect(block.source).toContain('[V:bass] D,,3 A,,3');
+    expect(block.source).not.toContain('A following paragraph.');
+  });
+
+  it('should reject prose-interrupted raw ABC', () => {
+    expect(isLikelyAbcTunebook(abcMarkdownTortureTest.replace(
+      '\n\n[V:melody]',
+      '\n\nThis prose explains the tune before the notes.\n\n[V:melody]',
+    ))).toBe(false);
   });
 
   it('should detect raw multi-tune ABC tunebooks', () => {

@@ -1,3 +1,5 @@
+import { abcMarkdownTortureTest } from './abcRawTunebookFixtures';
+
 export default [{
   id: 'core-fields',
   group: 'core-fields',
@@ -56,6 +58,12 @@ export default [{
     '[V:1] C D E F |',
     '[V:2] C,, D,, E,, F,, |',
   ].join('\n'),
+}, {
+  id: 'markdown-torture-test',
+  group: 'voices-staves',
+  renderers: ['abcjs', 'abc2svg'],
+  expectWarnings: false,
+  abc: abcMarkdownTortureTest,
 }, {
   id: 'bars-repeats',
   group: 'bars-repeats',

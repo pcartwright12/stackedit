@@ -32,6 +32,9 @@ StackEdit supports ABC notation through an internal renderer adapter layer.
 - ABC feature fixtures cover core fields, notes/rhythm, voices/staves, bars/repeats, lyrics/text,
   and decorations/layout. These tests assert nonempty SVG output and diagnostics behavior, not
   pixel-perfect visual equality.
+- Complex regression fixtures include an ABC Markdown torture test with named voices, clefs,
+  `%%staves`, modal keys, tuplets, grace notes, chord symbols, lyrics, melisma, and low octaves.
+  Use fenced `abc` blocks when this kind of notation appears near explanatory prose.
 
 ## PDF Smoke Checks
 

@@ -1,11 +1,16 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
-import SynthController from 'abcjs/src/synth/synth-controller';
-import supportsAudio from 'abcjs/src/synth/supports-audio';
+import abcjs from 'abcjs/dist/abcjs-basic';
 import abcNotationSvc from '../../../../src/services/abcNotation';
 
-jest.mock('abcjs/src/api/abc_tunebook_svg', () => jest.fn());
-jest.mock('abcjs/src/synth/supports-audio', () => jest.fn());
-jest.mock('abcjs/src/synth/synth-controller', () => jest.fn());
+jest.mock('abcjs/dist/abcjs-basic', () => ({
+  renderAbc: jest.fn(),
+  synth: {
+    supportsAudio: jest.fn(),
+    SynthController: jest.fn(),
+  },
+}));
+
+const { renderAbc } = abcjs;
+const { SynthController, supportsAudio } = abcjs.synth;
 
 describe('abcNotation service', () => {
   let synthController;

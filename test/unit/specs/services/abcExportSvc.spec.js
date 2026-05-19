@@ -1,7 +1,13 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
+import abcjs from 'abcjs/dist/abcjs-basic';
 import localDbSvc from '../../../../src/services/localDbSvc';
 
-jest.mock('abcjs/src/api/abc_tunebook_svg', () => jest.fn());
+jest.mock('abcjs/dist/abcjs-basic', () => ({
+  renderAbc: jest.fn(),
+  synth: {
+    supportsAudio: jest.fn(() => true),
+    SynthController: jest.fn(),
+  },
+}));
 jest.mock('../../../../src/services/localDbSvc', () => ({
   __esModule: true,
   default: {
@@ -23,6 +29,8 @@ jest.mock('../../../../src/store', () => ({
     },
   },
 }));
+
+const { renderAbc } = abcjs;
 
 function setContent(text, renderer = 'abcjs') {
   localDbSvc.loadItem.mockResolvedValue({
