@@ -141,3 +141,25 @@ A --> C(Round Rect)
 B --> D{Rhombus}
 C --> D
 ```
+
+
+## ABC notation
+
+You can render music notation from fenced ABC blocks:
+
+```abc
+X:1
+T:Simple scale
+M:4/4
+L:1/4
+K:C
+C D E F | G A B c |
+w: do re mi fa sol la ti do
+
+X:2
+T:Second tune
+M:3/4
+L:1/8
+K:G
+G2 B2 d2 | g6 |
+```

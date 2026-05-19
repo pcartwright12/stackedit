@@ -29,6 +29,8 @@ module.exports = {
   // add your custom rules here
   'rules': {
     'no-param-reassign': [2, { 'props': false }],
+    // Keep the dev server usable on Windows checkouts.
+    'linebreak-style': 0,
     // don't require .vue extension when importing
     'import/extensions': ['error', 'always', {
       'js': 'never',

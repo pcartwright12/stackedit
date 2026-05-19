@@ -43,11 +43,18 @@ module.exports = (app) => {
   app.get('/googleDriveAction', (req, res) =>
     res.redirect(`./app#providerId=googleDrive&state=${encodeURIComponent(req.query.state)}`));
 
+  // Serve app shell
+  if (process.env.NODE_ENV === 'production') {
+    app.get('/app', (req, res) => res.sendFile(resolvePath('dist/index.html')));
+  } else {
+    app.get('/app', (req, res, next) => {
+      req.url = '/index.html';
+      next();
+    });
+  }
+
   // Serve static resources
   if (process.env.NODE_ENV === 'production') {
-    // Serve index.html in /app
-    app.get('/app', (req, res) => res.sendFile(resolvePath('dist/index.html')));
-
     // Serve style.css with 1 day max-age
     app.get('/style.css', (req, res) => res.sendFile(resolvePath('dist/style.css'), {
       maxAge: '1d',

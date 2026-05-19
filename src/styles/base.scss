@@ -192,6 +192,38 @@ img {
   overflow-x: auto !important;
 }
 
+.abc-notation-tune {
+  margin: 1.2em 0;
+}
+
+.abc-notation-title {
+  font-weight: bold;
+  margin-bottom: 0.4em;
+}
+
+.abc-notation-output {
+  overflow-x: auto;
+}
+
+.abc-notation-diagnostics {
+  color: #8a5a00;
+  font-size: 0.9em;
+  margin: 0.6em 0;
+  padding-left: 1.4em;
+}
+
+.abc-notation-diagnostic--error {
+  color: #b00020;
+}
+
+.abc-notation-source {
+  margin-top: 0.6em;
+}
+
+.abc-notation-source--hidden {
+  display: none;
+}
+
 .stackedit__html {
   margin-bottom: 180px;
   margin-left: auto;

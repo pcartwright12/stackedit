@@ -29,6 +29,12 @@ const zero = {
   */
   abc: {
     enabled: false,
+    renderer: 'abcjs',
+    strict: true,
+    responsive: true,
+    staffWidth: 740,
+    playback: false,
+    fixPostponedLyrics: true,
   },
   /*
   Katex extension
