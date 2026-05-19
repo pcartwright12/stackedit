@@ -196,9 +196,37 @@ img {
   margin: 1.2em 0;
 }
 
+.abc-notation-header {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  justify-content: space-between;
+  margin-bottom: 0.4em;
+}
+
 .abc-notation-title {
   font-weight: bold;
-  margin-bottom: 0.4em;
+}
+
+.abc-notation-status {
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 0.75em;
+  line-height: 1.6;
+  padding: 0 0.45em;
+}
+
+.abc-notation-status--ok {
+  color: #317a36;
+}
+
+.abc-notation-status--warning {
+  color: #8a5a00;
+}
+
+.abc-notation-status--error {
+  color: #b00020;
 }
 
 .abc-notation-output {
@@ -213,6 +241,19 @@ img {
 }
 
 .abc-notation-diagnostic--error {
+  color: #b00020;
+}
+
+.abc-notation-playback {
+  margin-top: 0.6em;
+}
+
+.abc-notation-playback-message {
+  color: #8a5a00;
+  font-size: 0.9em;
+}
+
+.abc-notation-playback-message--error {
   color: #b00020;
 }
 
