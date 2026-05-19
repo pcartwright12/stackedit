@@ -1,63 +1,24 @@
-import renderAbc from 'abcjs/src/api/abc_tunebook_svg';
-import {
-  applyPostponedLyricsShim,
-  collectStrictDiagnostics,
-  normalizeRendererOptions,
-  splitTunebook,
-} from './utils';
-
-function normalizeDiagnostic(diagnostic, fallbackLine) {
-  if (typeof diagnostic === 'string') {
-    return {
-      severity: 'warning',
-      line: fallbackLine,
-      message: diagnostic.replace(/<[^>]+>/g, ''),
-    };
-  }
-  return {
-    severity: diagnostic.severity || 'warning',
-    line: diagnostic.line || fallbackLine,
-    message: diagnostic.message || `${diagnostic}`,
-  };
-}
-
-const abcjsAdapter = {
-  name: 'abcjs',
-  parseTunebook(source, options) {
-    return splitTunebook(source).map(tune => ({
-      ...tune,
-      abc: options.fixPostponedLyrics === false
-        ? tune.abc
-        : applyPostponedLyricsShim(tune.abc),
-    }));
-  },
-  renderTune(tune, targetElement, options) {
-    const renderOptions = {
-      ...options,
-      startingTune: 0,
-    };
-    return renderAbc(targetElement, tune.abc, renderOptions);
-  },
-  collectDiagnostics(tune, renderedTunes, options) {
-    const diagnostics = options.strict ? collectStrictDiagnostics(tune) : [];
-    (renderedTunes || []).forEach((renderedTune) => {
-      (renderedTune.warnings || []).forEach((warning) => {
-        diagnostics.push(normalizeDiagnostic(warning, tune.startLine));
-      });
-    });
-    return diagnostics;
-  },
-  renderPlaybackControls() {
-    return false;
-  },
-};
+import abc2svgAdapter from './adapters/abc2svg';
+import abcjsAdapter from './adapters/abcjs';
+import capabilities from './capabilities';
+import { normalizeRendererOptions } from './utils';
 
 const adapters = {
+  abc2svg: abc2svgAdapter,
   abcjs: abcjsAdapter,
 };
 
 function getAdapter(options) {
-  return adapters[options.renderer] || abcjsAdapter;
+  const adapter = adapters[options.renderer];
+  if (adapter && (!adapter.isAvailable || adapter.isAvailable())) {
+    return adapter;
+  }
+  return abcjsAdapter;
+}
+
+function isRendererAvailable(renderer) {
+  const adapter = adapters[renderer];
+  return !!adapter && (!adapter.isAvailable || adapter.isAvailable());
 }
 
 export default {
@@ -69,7 +30,7 @@ export default {
       adapter,
       options: normalizedOptions,
       tunes,
-      diagnostics: adapters[normalizedOptions.renderer] ? [] : [{
+      diagnostics: isRendererAvailable(normalizedOptions.renderer) ? [] : [{
         severity: 'warning',
         line: 1,
         message: `ABC renderer "${normalizedOptions.renderer}" is not available; using abcjs.`,
@@ -89,5 +50,11 @@ export default {
       return false;
     }
     return renderContext.adapter.renderPlaybackControls(tune, targetElement, renderContext.options);
+  },
+  getRendererCapabilities(renderer) {
+    return capabilities[renderer] || null;
+  },
+  getAvailableRenderers() {
+    return Object.keys(adapters).filter(isRendererAvailable);
   },
 };

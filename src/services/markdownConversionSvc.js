@@ -2,6 +2,7 @@ import DiffMatchPatch from 'diff-match-patch';
 import Prism from 'prismjs';
 import MarkdownIt from 'markdown-it';
 import markdownGrammarSvc from './markdownGrammarSvc';
+import markdownFenceLanguageSvc from './markdownFenceLanguageSvc';
 import extensionSvc from './extensionSvc';
 import utils from './utils';
 
@@ -23,20 +24,6 @@ const languageAliases = ({
 });
 Object.entries(languageAliases).forEach(([alias, language]) => {
   Prism.languages[alias] = Prism.languages[language];
-});
-
-// Add programming language parsing capability to markdown fences
-const insideFences = {};
-Object.entries(Prism.languages).forEach(([name, language]) => {
-  if (Prism.util.type(language) === 'Object') {
-    insideFences[`language-${name}`] = {
-      pattern: new RegExp(`(\`\`\`|~~~)${name}\\W[\\s\\S]*`),
-      inside: {
-        'cl cl-pre': /(```|~~~).*/,
-        rest: language,
-      },
-    };
-  }
 });
 
 // Disable spell checking in specific tokens
@@ -108,6 +95,7 @@ export default {
   defaultOptions: null,
   defaultConverter: null,
   defaultPrismGrammars: null,
+  registerFenceLanguage: markdownFenceLanguageSvc.registerFenceLanguage,
 
   init() {
     const defaultProperties = { extensions: utils.computedPresets.default };
@@ -115,7 +103,7 @@ export default {
     // Default options for the markdown converter and the grammar
     this.defaultOptions = {
       ...extensionSvc.getOptions(defaultProperties),
-      insideFences,
+      insideFences: markdownFenceLanguageSvc.insideFences,
     };
 
     this.defaultConverter = this.createConverter(this.defaultOptions);

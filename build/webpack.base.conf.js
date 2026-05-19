@@ -66,7 +66,8 @@ module.exports = {
         include: [
           resolve('src'),
           resolve('test'),
-          resolve('node_modules/mermaid')
+          resolve('node_modules/mermaid'),
+          resolve('node_modules/abcjs/src')
         ],
         exclude: [
           resolve('node_modules/mermaid/src/diagrams/class/parser'),

@@ -35,6 +35,8 @@ contract so abc2svg-compatible support can be added without changing Markdown or
   - `renderPlaybackControls(tune, targetElement, options)`
 - Implement an abc2svg-capable adapter for notation or directive gaps that `abcjs` cannot
   cover reliably.
+- Keep `abcjs` as the default renderer; expose `abc2svg` through `extensions.abc.renderer:
+  abc2svg` after license review for the LGPL-3.0 package.
 - Build regression fixtures for all high-value ABC areas:
   - Core fields: `X T C M L K Q R Z N O A B D F G H S W w`
   - Notes/rhythm: pitch, octave, accidentals, ties, slurs, tuplets, rests, chords,
@@ -59,6 +61,10 @@ contract so abc2svg-compatible support can be added without changing Markdown or
   instruments where the active renderer/backend supports them.
 - Document supported renderer differences and known ABC dialect limitations in user-facing
   sample content.
+
+Phase 3 implementation notes: `abcjs` now exposes opt-in browser playback controls, editor
+highlighting tokenizes fenced ABC contents, HTML export is covered by unit tests, and PDF export is
+tracked as a manual smoke check because it depends on the browser export environment.
 
 ## Acceptance Criteria
 

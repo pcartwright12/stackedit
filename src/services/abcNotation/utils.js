@@ -3,9 +3,26 @@ const directivePattern = /^%%/;
 const lyricLinePattern = /^w:/;
 const bodyFieldPattern = /^[A-Za-z]:/;
 const requiredHeaderFields = ['X', 'T', 'K'];
+const danglingFencePattern = /(?:^|\n)(```|~~~)\s*$/;
+const notePattern = /(?:^|\s)(?:\[[^\]]+\]\s*)?[_=^]*[A-Ga-g][,']*\d*(?:\/\d*)?(?=\s|[|:\]])/;
 
 export function normalizeSource(source = '') {
   return `${source || ''}`.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '');
+}
+
+export function normalizeDiagnostic(diagnostic, fallbackLine) {
+  if (typeof diagnostic === 'string') {
+    return {
+      severity: 'warning',
+      line: fallbackLine,
+      message: diagnostic.replace(/<[^>]+>/g, ''),
+    };
+  }
+  return {
+    severity: diagnostic.severity || 'warning',
+    line: diagnostic.line || fallbackLine,
+    message: diagnostic.message || `${diagnostic}`,
+  };
 }
 
 function getLineNumber(source, index) {
@@ -127,6 +144,41 @@ function isMusicLine(line) {
     !directivePattern.test(trimmedLine) &&
     !bodyFieldPattern.test(trimmedLine) &&
     !/^%/.test(trimmedLine);
+}
+
+function isPlausibleMusicLine(line) {
+  const trimmedLine = line.trim();
+  return isMusicLine(trimmedLine) &&
+    (/[|:]/.test(trimmedLine) || notePattern.test(trimmedLine));
+}
+
+function hasRequiredRawAbcShape(tune) {
+  const lines = normalizeSource(tune.pure || tune.abc).split('\n');
+  const firstContentLine = lines.find(line => line.trim());
+  if (!firstContentLine || !/^X:\s*\S/.test(firstContentLine)) {
+    return false;
+  }
+  const keyIndex = lines.findIndex(line => /^K:\s*\S/.test(line.trim()));
+  if (keyIndex < 0) {
+    return false;
+  }
+  const firstMusicIndex = lines.findIndex(isPlausibleMusicLine);
+  return firstMusicIndex > keyIndex;
+}
+
+export function sanitizeRawAbcSource(source = '') {
+  return normalizeSource(source)
+    .replace(danglingFencePattern, '')
+    .replace(/\s+$/g, '');
+}
+
+export function isLikelyAbcTunebook(source = '') {
+  const normalizedSource = sanitizeRawAbcSource(source);
+  if (!/^X:/m.test(normalizedSource) || !normalizedSource.trim().startsWith('X:')) {
+    return false;
+  }
+  const tunes = splitTunebook(normalizedSource);
+  return !!tunes.length && tunes.every(hasRequiredRawAbcShape);
 }
 
 export function applyPostponedLyricsShim(abc) {

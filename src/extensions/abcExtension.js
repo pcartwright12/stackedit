@@ -1,6 +1,11 @@
 import Prism from 'prismjs';
 import abcNotationSvc from '../services/abcNotation';
 import extensionSvc from '../services/extensionSvc';
+import markdownFenceLanguageSvc from '../services/markdownFenceLanguageSvc';
+import {
+  isLikelyAbcTunebook,
+  sanitizeRawAbcSource,
+} from '../services/abcNotation/utils';
 
 Prism.languages.abc = {
   comment: /%.*/,
@@ -13,6 +18,7 @@ Prism.languages.abc = {
   note: /[_=^]*[A-Ga-g][,']*\d*(?:\/\d*)?|[xz]\d*(?:\/\d*)?/,
   punctuation: /[()[\]{}<>-]/,
 };
+markdownFenceLanguageSvc.registerFenceLanguage('abc', Prism.languages.abc);
 
 function createElement(tagName, className, text) {
   const elt = document.createElement(tagName);
@@ -23,6 +29,50 @@ function createElement(tagName, className, text) {
     elt.textContent = text;
   }
   return elt;
+}
+
+function countDiagnostics(diagnostics) {
+  return diagnostics.reduce((counts, diagnostic) => {
+    if (diagnostic.severity === 'error') {
+      counts.errors += 1;
+    } else {
+      counts.warnings += 1;
+    }
+    return counts;
+  }, {
+    errors: 0,
+    warnings: 0,
+  });
+}
+
+function renderTuneHeader(tune, renderContext, diagnostics) {
+  const headerElt = createElement('div', 'abc-notation-header');
+  headerElt.appendChild(createElement(
+    'div',
+    'abc-notation-title',
+    tune.title || `Tune ${tune.index + 1}`,
+  ));
+  const counts = countDiagnostics(diagnostics);
+  let statusType = 'ok';
+  if (counts.errors) {
+    statusType = 'error';
+  } else if (counts.warnings) {
+    statusType = 'warning';
+  }
+  const status = counts.errors
+    ? `${counts.errors} error${counts.errors > 1 ? 's' : ''}`
+    : `${counts.warnings} warning${counts.warnings > 1 ? 's' : ''}`;
+  const cleanStatus = 'OK';
+  const renderer = renderContext.options.renderer ||
+    (renderContext.adapter && renderContext.adapter.name) ||
+    'abcjs';
+  const statusElt = createElement(
+    'div',
+    `abc-notation-status abc-notation-status--${statusType}`,
+    `${renderer} - ${counts.errors || counts.warnings ? status : cleanStatus}`,
+  );
+  headerElt.appendChild(statusElt);
+  return headerElt;
 }
 
 function renderDiagnostics(parentElt, diagnostics) {
@@ -55,6 +105,7 @@ function appendSourceFallback(parentElt, content, hidden) {
 function renderBlock(blockElt, content, options) {
   const renderContext = abcNotationSvc.parseTunebook(content, options);
   blockElt.innerHTML = '';
+  const hasContextDiagnostics = !!renderContext.diagnostics.length;
   if (!renderContext.tunes.length) {
     appendSourceFallback(blockElt, content, false);
     return;
@@ -62,21 +113,23 @@ function renderBlock(blockElt, content, options) {
   renderContext.tunes.forEach((tune) => {
     const tuneElt = createElement('section', 'abc-notation-tune');
     tuneElt.id = `abc-tune-${tune.startLine}-${`${tune.id || tune.index}`.replace(/\W+/g, '-')}`;
-    if (tune.title) {
-      tuneElt.appendChild(createElement('div', 'abc-notation-title', tune.title));
-    }
     const outputElt = createElement('div', 'abc-notation-output');
-    tuneElt.appendChild(outputElt);
     try {
       const renderedTunes = abcNotationSvc.renderTune(tune, outputElt, renderContext) || [];
       const diagnostics = abcNotationSvc.collectDiagnostics(tune, renderedTunes, renderContext);
+      tuneElt.appendChild(renderTuneHeader(tune, renderContext, diagnostics));
+      tuneElt.appendChild(outputElt);
       renderDiagnostics(tuneElt, diagnostics);
       const playbackElt = createElement('div', 'abc-notation-playback');
       if (abcNotationSvc.renderPlaybackControls(tune, playbackElt, renderContext)) {
         tuneElt.appendChild(playbackElt);
       }
-      appendSourceFallback(tuneElt, tune.pure, true);
+      appendSourceFallback(tuneElt, tune.pure, !hasContextDiagnostics);
     } catch (e) {
+      tuneElt.appendChild(renderTuneHeader(tune, renderContext, [{
+        severity: 'error',
+      }]));
+      tuneElt.appendChild(outputElt);
       renderDiagnostics(tuneElt, [{
         severity: 'error',
         line: tune.startLine,
@@ -92,6 +145,25 @@ function renderLegacyBlock(elt, options) {
   const content = elt.textContent;
   const blockElt = createElement('div', 'abc-notation-block');
   elt.parentNode.parentNode.replaceChild(blockElt, elt.parentNode);
+  renderBlock(blockElt, content, options);
+}
+
+function removeDanglingFenceSibling(elt) {
+  const siblingElt = elt.nextElementSibling;
+  if (
+    siblingElt &&
+    siblingElt.tagName === 'PRE' &&
+    siblingElt.textContent.trim() === ''
+  ) {
+    siblingElt.parentNode.removeChild(siblingElt);
+  }
+}
+
+function renderRawBlock(elt, options) {
+  const content = sanitizeRawAbcSource(elt.textContent);
+  const blockElt = createElement('div', 'abc-notation-block');
+  removeDanglingFenceSibling(elt);
+  elt.parentNode.replaceChild(blockElt, elt);
   renderBlock(blockElt, content, options);
 }
 
@@ -145,6 +217,15 @@ extensionSvc.onSectionPreview((elt, options) => {
     .cl_each((notationElt) => {
       if (!isInsideAbcBlock(notationElt)) {
         renderLegacyBlock(notationElt, options.abc);
+      }
+    });
+  elt.querySelectorAll('p')
+    .cl_each((paragraphElt) => {
+      if (
+        !isInsideAbcBlock(paragraphElt) &&
+        isLikelyAbcTunebook(paragraphElt.textContent)
+      ) {
+        renderRawBlock(paragraphElt, options.abc);
       }
     });
 });

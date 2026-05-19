@@ -99,5 +99,6 @@ newFileProperties: |
 #      strict: true
 #      responsive: true
 #      staffWidth: 740
+#      # Playback is opt-in and currently available with the abcjs renderer.
 #      playback: false
-
+#      fixPostponedLyrics: true
